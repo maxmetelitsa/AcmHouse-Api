@@ -1,0 +1,27 @@
+# Runs the API with SQL Server: docker compose up --build, then open http://localhost:8080/swagger
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${SA_PASSWORD:-AcmHouse_Dev_2026!}"
+    ports:
+      - "1433:1433"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Default: "Server=db;Database=AcmHouse;User Id=sa;Password=${SA_PASSWORD:-AcmHouse_Dev_2026!};TrustServerCertificate=True"
+      Jwt__Key: "${JWT_KEY:-docker-dev-signing-key-change-me-0123456789}"
+      Database__Initialize: "true"
+    ports:
+      - "8080:8080"
